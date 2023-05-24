@@ -1,103 +1,180 @@
-// Asynchronous `init` function
-async function init() {
-  // Function called `fetchAllSongs plus an asynchronous function
-  const fechAllSongs = async (SONGS_API_URL) => {}; // (?)
-  // Fetch all songs from the server and return as JSON
+// get elements
+const recipesContainer = document.getElementById("recipes-container");
+const newRecipeFormContainer = document.getElementById("new-recipe-form");
+
+// API URL
+const API_URL = "http://localhost:8080/api/demo/recipes";
+
+// fetch recipes
+const fetchAllRecipes = async () => {
   try {
-    // create a variable for response (ASYNC/AWAIT): Promises
-    const response = await fetch();
-    const data = await response.json();
-    // return variable
-    return data;
-    // local variable
+    const response = await fetch(API_URL);
+    const recipes = await response.json();
+    console.log(recipes);
+    return recipes;
   } catch (error) {
-    // The console module provides a simple debugging console that is similar to the JavaScript
-    // console mechanism provided by web browsers.
     console.log(error);
   }
-}
-// Call the `fetchAllSongs` function inside your `init` function and console.log the result.
-// You should see an array of all songs in your browser console.
-async function init() {
-  const songs = await fetchAllSongs();
-  console.log(songs);
-}
-// Write a function called `renderAllSongs` that will take in an array of songs and render them
-// to the DOM. You can use the `renderAllRecipes` function we wrote in the previous demonstration as a reference.
-function renderSongs(songs) {
-  const songContainer = document.querySelector("#song-container");
-  songContainer.innerHTML = "";
-  songs.forEach((song) => {
-    const songElement = renderSong(song);
-    songContainer.append(songElement);
+};
+
+// fetch single recipe
+const fetchSingleRecipe = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/${id}`);
+    const recipe = await response.json();
+    const recipeElement = document.createElement("div");
+    recipeElement.classList.add("recipe");
+    recipeElement.innerHTML = `
+            <h4>${recipe.title}</h4>
+            <p>${recipe.instructions}</p>
+        `;
+    recipesContainer.appendChild(recipeElement);
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+// create new recipe
+const createNewRecipe = async (title, image_url, instructions) => {
+  try {
+    const response = await fetch(API_URL, {
+      method: "POST",
+      body: JSON.stringify({ title, image_url, instructions }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const recipe = await response.json();
+    console.log(recipe);
+    fetchAllRecipes();
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+// remove recipe
+const removeRecipe = async (id) => {
+  try {
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: "DELETE",
+    });
+    const recipe = await response.json();
+    console.log(recipe);
+    fetchAllRecipes();
+
+    // reload the window
+    window.location.reload();
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+// // render all recipes
+const renderAllRecipes = (recipeList) => {
+  if (!recipeList || recipeList.length === 0) {
+    recipesContainer.innerHTML = "<h3>No recipes found</h3>";
+    return;
+  }
+
+  recipesContainer.innerHTML = "";
+
+  recipeList.forEach((recipe) => {
+    const recipeElement = document.createElement("div");
+    recipeElement.classList.add("recipe-card");
+    recipeElement.innerHTML = `
+            <h4>${recipe.title}</h4>
+            <img src="${recipe.image_url}" alt="${recipe.title}">
+            <p>${recipe.instructions}</p>
+            <button class="delete-button" data-id="${recipe.id}">Remove</button>
+            <button class="detail-button" data-id="${recipe.id}">See Details</button>
+        `;
+    recipesContainer.appendChild(recipeElement);
+
+    let deleteButton = recipeElement.querySelector(".delete-button");
+    deleteButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      removeRecipe(recipe.id);
+    });
+
+    let detailButton = recipeElement.querySelector(".detail-button");
+    detailButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      renderSingleRecipe(recipe);
+    });
   });
-}
-// Call the `renderSongs` function inside your `init` function and pass in the array of songs you got
-// from the server
-async function init() {
-  const songs = await fetchAllSongs();
-  renderSongs(songs);
-}
-// Write a function called `addNewSong` that will take in a song object and create a new
-// song on the server. This function should return the newly created song.
-async function addNewSong(song) {
-  const response = await fetch("/api/guided-practice/songs", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(song),
+};
+
+// render single recipe
+const renderSingleRecipe = (recipe) => {
+  if (!recipe || recipe.length === 0) {
+    recipesContainer.innerHTML = "<h3>No recipe found</h3>";
+    return;
+  }
+
+  let recipeHTML = `
+        <div class="single-recipe-view">
+            <div class="recipe">
+                <h4>${recipe.title}</h4>
+                <img src="${recipe.image_url}" alt="${recipe.title}">
+                <p>${recipe.instructions}</p>
+            </div>
+
+            <button class="back-button">Back</button>
+        </div>`;
+  recipesContainer.innerHTML = recipeHTML;
+
+  let backButton = recipesContainer.querySelector(".back-button");
+  backButton.addEventListener("click", async () => {
+    const recipes = await fetchAllRecipes();
+    renderAllRecipes(recipes);
   });
-  const newSong = await response.json();
-  return newSong;
-}
-// Write a new function called `renderNewSongForm` that will render a form to the DOM.
-// The form should have inputs for the following fields: title, artist, genre, and release date.
-// The form should also have a submit button.
-function renderNewSongForm() {
-  const newSongForm = document.querySelector("#new-song-form");
-  newSongForm.innerHTML = `
-      <form>
-        <label for="title">Title</label>
-        <input type="text" name="title" id="title" />
-        <label for="artist">Artist</label>
-        <input type="text" name="artist" id="artist" />
-        <label for="genre">Genre</label>
-        <input type="text" name="genre" id="genre" />
-        <label for="release-date">Release Date</label>
-        <input type="date" name="release-date" id="release-date" />
-        <button type="submit">Submit</button>
-      </form>
+};
+
+// create new recipe form
+const createNewRecipeForm = () => {
+  let formHtml = `
+    <form>
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" placeholder="Title">
+    <label for="image_url">Image URL</label>
+    <input type="text" id="image_url" name="image_url" placeholder="Image URL">
+    <label for="instructions">Instructions</label>
+    <textarea id="instructions" name="instructions" placeholder="Instructions"></textarea>
+    <button type="submit">Create</button>
+    </form>
     `;
-}
-// Call the `renderNewSongForm` function inside your `init` function.
-async function init() {
-  const songs = await fetchAllSongs();
-  renderSongs(songs);
-  renderNewSongForm();
-}
-// Inside your `renderNewSongForm` function, add an event listener to the form that will
-// listen for the submit event. When the form is submitted, the event listener should prevent
-// the default behavior of the form and call the `addNewSong` function. The `addNewSong` function
-// should take in an object with the following keys: title, artist, genre, and releaseDate.
-// The values for these keys should be the values from the form inputs.
-newSongForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const title = document.getElementById("title").value;
-  const artist = document.getElementById("artist").value;
-  const genre = document.getElementById("genre").value;
-  const releaseDate = document.getElementById("release-date").value;
+  newRecipeFormContainer.innerHTML = formHtml;
 
-  const newSong = {
-    title,
-    artist_id: artist,
-    genre_id: genre,
-    release_date: releaseDate,
-  };
+  let form = newRecipeFormContainer.querySelector("form");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-  await addNewSong(newSong);
-  const songs = await fetchAllSongs();
-  renderAllSongs(songs);
-});
-// Call the `init` function
+    let recipeData = {
+      title: form.title.value,
+      image_url: form.image_url.value,
+      instructions: form.instructions.value,
+    };
+
+    await createNewRecipe(
+      recipeData.title,
+      recipeData.image_url,
+      recipeData.instructions
+    );
+
+    const recipes = await fetchAllRecipes();
+    renderAllRecipes(recipes);
+
+    form.title.value = "";
+    form.image_url.value = "";
+    form.instructions.value = "";
+  });
+};
+
+const init = async () => {
+  const recipes = await fetchAllRecipes();
+  renderAllRecipes(recipes);
+
+  createNewRecipeForm();
+};
+
 init();
